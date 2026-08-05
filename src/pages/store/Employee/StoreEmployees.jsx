@@ -1,0 +1,133 @@
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { EmployeeForm, EmployeeTable } from ".";
+import { useDispatch, useSelector } from "react-redux";
+import { useEffect } from "react";
+import {
+  createStoreEmployee,
+  findStoreEmployees,
+  updateEmployee,
+  deleteEmployee,
+} from "@/Redux Toolkit/features/employee/employeeThunks";
+import { storeAdminRole } from "../../../utils/userRole";
+
+export default function StoreEmployees() {
+  const dispatch = useDispatch();
+  const { employees } = useSelector((state) => state.employee);
+  const {store}=useSelector(state=>state.store)
+
+  useEffect(() => {
+    if (store?.id) {
+      dispatch(findStoreEmployees(store.id));
+    }
+  }, [dispatch, store?.id]);
+
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [currentEmployee, setCurrentEmployee] = useState(null);
+
+  const handleAddEmployee = (newEmployeeData) => {
+    if (store?.id) {
+      dispatch(
+        createStoreEmployee({
+          employee: {
+            ...newEmployeeData,
+            storeId: store?.id,
+            username: newEmployeeData.email.split("@")[0],
+          },
+          storeId: store?.id,
+        })
+      );
+      setIsAddDialogOpen(false);
+    }
+  };
+
+  const handleEditEmployee = (updatedEmployeeData) => {
+    if (currentEmployee?.id) {
+      dispatch(
+        updateEmployee({
+          employeeId: currentEmployee.id,
+          employeeDetails: updatedEmployeeData,
+        })
+      );
+      setIsEditDialogOpen(false);
+    }
+  };
+
+  const handleDeleteEmployee = (id) => {
+    dispatch(deleteEmployee(id));
+  };
+
+  const openEditDialog = (employee) => {
+    setCurrentEmployee(employee);
+    setIsEditDialogOpen(true);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold tracking-tight">
+          Employee Management
+        </h1>
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-emerald-600 hover:bg-emerald-700">
+              <Plus className="mr-2 h-4 w-4" /> Add Employee
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Add New Employee</DialogTitle>
+            </DialogHeader>
+            <EmployeeForm
+              onSubmit={handleAddEmployee}
+              initialData={{
+                fullName: "",
+                email: "",
+                password: "",
+                phone: "",
+                role: "",
+                branchId: "",
+              }}
+              roles={storeAdminRole}
+            />
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Employee</DialogTitle>
+            </DialogHeader>
+            <EmployeeForm
+              onSubmit={handleEditEmployee}
+              roles={storeAdminRole}
+              initialData={
+                currentEmployee
+                  ? {
+                      ...currentEmployee,
+                      branchId: currentEmployee.branchId || "",
+                    }
+                  : null
+              }
+            />
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <EmployeeTable
+        employees={employees}
+        onEdit={openEditDialog}
+        onDelete={handleDeleteEmployee}
+      />
+    </div>
+  );
+}
